@@ -75,7 +75,23 @@ class Calculator {
     c == '}';
 }
 
-class Token<String> extends LinkedListEntry<Token> {
-  var token;
-  Token(this.token);
+class Token<T> extends LinkedListEntry<Token> {
+  var value;
+  Token(this.value);
+  String toString() => '$value';
+}
+
+class Number extends Token<num> {
+  Number(num value): super(value);
+}
+
+class Operator extends Token<Operators> {
+  Operator(Operator value): super(value);
+}
+
+enum Operators {
+  Add,
+  Sub,
+  Div,
+  Mul,
 }
