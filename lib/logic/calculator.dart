@@ -1,50 +1,86 @@
 import 'dart:math';
 import 'dart:core';
-import 'package:calcy/logic/stack.dart';
 import 'dart:collection';
 
+enum Tt { // token type
+  digit,op,wrapper,alpha,function
+}
+
 class Calculator {
-  String calculate(String input) => arithmetic(tokenize(input));
+  String calculate(String input) => eval(input);
     
-  List<String> tokenize(String input) {
+  String eval(String input) {
     var t = <String>['']; // tokens
+    var tType = <Tt>[];
     var digit = true; // seen a digit before?
     var alpha = true;
 
     for(var i = 0; i < input.length; i++) {
-      if(isDigit(input[i]) || input[i] == '.' || input[i] == '^') {
+      if(isDigit(input[i]) || input[i] == '.') {
         if(digit) {
-          if(input[i] != '.' || (input[i] == '.' && !t[t.length-1].contains('.')) )
+          if(  input[i] != '.' ||
+              (input[i] == '.' && !t[t.length-1].contains('.'))
+            )
             t[t.length-1] += input[i];
-          else {
-            print('ERROR: too many decimals for this token');
-            return['ERROR: too many decimals for this token'];
-          }
-        } else t.add(input[i]);
+          else
+            return 'ERROR: too many decimals for this token';
+        } else {
+          t.add(input[i]);
+          tType.add(Tt.digit);
+        }
         digit = true;
         alpha = false;
       } else if(isOp(input[i])) {
+        t.add(input[i]);
+        tType.add(Tt.op);
         digit = false;
         alpha = false;
-        t.add(input[i]);
       } else if(isWrapper(input[i])) {
+        if(alpha && isOpenWrapper(input[i])) {
+          t[t.length-1] += input[i];
+          tType.length == 0 ? tType.add(Tt.function) : tType[tType.length-1] = Tt.function;
+        } else {
+          t.add(input[i]);
+          tType.add(Tt.wrapper);
+        }
         digit = false;
         alpha = false;
-        t.add(input[i]);
-      } else { // TODO: is digit?
-        if(alpha) t[t.length-1] += input[i];
-        else if(input[i] != ' ') t.add(input[i]);
+      } else if(isAlpha(input[i])) {
+        if(alpha)
+          t[t.length-1] += input[i];
+        else {
+          t.add(input[i]);
+          tType.add(Tt.alpha);
+        }
         digit = false;
         alpha = true;
+      } else if(input[i] == ' ' && alpha) {
+        t[t.length-1] += ' ';
       }
     }
-    return t;
+
+    return arithmetic(t, tType);
   }
 
-  String arithmetic(List<String> t) { // TODO: calculate result from t
-    var l = LinkedList<Token>();
-    l.addFirst(t[i]);
-
+  String arithmetic(List<String> t, List<Tt> tType) { // TODO: calculate result from tokens -> postfix -> result
+    var stack = LinkedList<Token>();
+    var output = LinkedList<Token>();
+/*
+    for(var i = 0; i < t.length; i++, print(stack)) {
+      if(tType[i] == Tt.wrapper) {
+        if(isOpenWrapper(t[i])) {
+          stack.add(Token(t[i]));
+        } else {
+          do {
+            output.add(stack.last);
+            stack.remove(stack.last);
+            if(stack.isEmpty) return 'ERROR: unequal amount of wrappers';
+          } while (!isCloseWrapper(stack.last.toString()));
+        }
+      }
+    }
+    // stack.add(Token(t[i]));
+*/
     return t.toString();
   }
 
@@ -64,7 +100,8 @@ class Calculator {
     c == '+' ||
     c == '-' ||
     c == '/' ||
-    c == '*';
+    c == '*' ||
+    c == '^';
 
   bool isWrapper(String c) =>
     c == ')' ||
@@ -73,25 +110,23 @@ class Calculator {
     c == ']' ||
     c == '{' ||
     c == '}';
+
+  bool isOpenWrapper(String c) =>
+    c == '(' ||
+    c == '[' ||
+    c == '{';
+
+  bool isCloseWrapper(String c) =>
+    c == ')' ||
+    c == ']' ||
+    c == '}';
+  bool isAlpha(String c) =>
+    c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f' || c == 'g' || c == 'h' || c == 'i' || c == 'j' || c == 'k' || c == 'l' || c == 'm' || c == 'n' || c == 'o' || c == 'p' || c == 'q' || c == 'r' || c == 's' || c == 't' || c == 'u' || c == 'v' || c == 'w' || c == 'x' || c == 'y' || c == 'z' ||
+    c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F' || c == 'G' || c == 'H' || c == 'I' || c == 'J' || c == 'K' || c == 'L' || c == 'M' || c == 'N' || c == 'O' || c == 'P' || c == 'Q' || c == 'R' || c == 'S' || c == 'T' || c == 'U' || c == 'V' || c == 'W' || c == 'X' || c == 'Y' || c == 'Z';
 }
 
 class Token<T> extends LinkedListEntry<Token> {
   var value;
   Token(this.value);
   String toString() => '$value';
-}
-
-class Number extends Token<num> {
-  Number(num value): super(value);
-}
-
-class Operator extends Token<Operators> {
-  Operator(Operator value): super(value);
-}
-
-enum Operators {
-  Add,
-  Sub,
-  Div,
-  Mul,
 }
