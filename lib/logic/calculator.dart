@@ -12,10 +12,11 @@ class Calculator {
   String eval(String input) {
     var t = <String>[]; // tokens
     var tType = <Tt>[];
-    var number = false; // seen a number before?
+    var number = false; // seen a number before?R
     var alpha = false;
     var func = false;
-
+    var op = true;
+    var sign = false;
     for(var i = 0; i < input.length; i++) {
       if(isNumber(input[i]) || input[i] == '.') {
         if(number) {
@@ -25,24 +26,44 @@ class Calculator {
             t[t.length-1] += input[i];
           else
             return 'ERROR: too many decimals for this token';
-          number = true;
-          func = false;
         } else {
-          t.add(input[i]);
-          if(func)
-            tType.add(Tt.argument);
-          else
+          if(func) {
+            if(tType.length != 0 && tType[tType.length-1] == Tt.argument) {
+              t[t.length-1] += input[i];
+            } else { // function is before
+              t.add(input[i]);
+              tType.add(Tt.argument);
+            }
+          } else if(sign && (t.length != 0 && (t[t.length-1] == '+' || t[t.length-1] == '-'))) {
+            t[t.length-1] += input[i];
+            tType[tType.length-1] = Tt.number;
+          } else {
+            t.add(input[i]);
             tType.add(Tt.number);
-          number = true;
-          func = false;
-          alpha = false;
+          }
         }
+        number = true;
+        func = false;
+        alpha = false;
+        sign = false;
+        op = false;
+        sign = false;
       } else if(isOp(input[i])) {
         t.add(input[i]);
-        tType.add(Tt.op);
+        if(!func)
+          tType.add(Tt.op);
+        else if(tType.length != 0 && tType[tType.length-1] == Tt.argument)
+          t[t.length-1] += input[i];
         number = false;
         alpha = false;
         func = false;
+        if(op) {
+          sign = true;
+          op = false;
+        } else {
+          op = true;
+          sign = false;
+        }
       } else if(isWrapper(input[i])) {
         if(alpha && isOpenWrapper(input[i])) {
           t[t.length-1] += input[i];
@@ -54,22 +75,41 @@ class Calculator {
         }
         number = false;
         alpha = false;
+        op = false;
+        sign = false;
       } else if(isAlpha(input[i])) {
         if(alpha)
           t[t.length-1] += input[i];
-        else {
+        else if(sign && (t.length != 0 && (t[t.length-1] == '+' || t[t.length-1] == '-'))) {
+          t[t.length-1] += input[i];
+          tType[tType.length-1] = Tt.function;
+        } else {
           t.add(input[i]);
           tType.add(Tt.alpha);
         }
         number = false;
         alpha = true;
         func = false;
-      } else {
+        op = false;
+        sign = false;
+      } else if(input[i] == ' ') {
+        number = false;
+        alpha = false;
+        func = false;
+        op = true;
+        sign = false;
+      } else if(input[i] == ',') {
+        t.add('');
+        tType.add(Tt.argument);
         number = false;
         alpha = false;
         func = true;
+        op = false;
+        sign = false;
       }
     }
+    print(t);
+    print(tType);
 
     return infixToPostfix(t, tType);
   }
@@ -78,30 +118,34 @@ class Calculator {
     var stack = LinkedList<Token>();
     var output = <String>[];
 
+    print('infix');
+    print('    $t');
+
     for(var i = 0; i < tType.length; i++) {
       if(tType[i] == Tt.number) {
         output.add(t[i]);
+      }  else if(tType[i] == Tt.function) {
+        // TODO: logic to calculate function immediately
+        if((i+2) < tType.length && tType[i+2] == Tt.wrapper) {
+          output.add( func1arg(t[i] , t[i+1]) );
+          i = i + 2;
+          // output.add( func1arg(t[i] , eval(t[i+1])) );
+        } else if((i+3) < tType.length && tType[i+3] == Tt.wrapper) {
+          output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
+          i = i + 3;
+          // output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+3])) );
+        }
       } else if(tType[i] == Tt.wrapper) {
         if(isOpenWrapper(t[i])) {
           stack.add(Token(t[i]));
         } else { // is closed wrapper
           while(!isOpenWrapper(stack.last.toString())) {
-            print(stack);
             output.add(stack.last.toString()); // get top value
             stack.remove(stack.last); // remove top
             if(stack.isEmpty)
               return 'ERROR: no opening wrapper found';
           }
           stack.remove(stack.last); // discard wrapper from top
-        }
-      } else if(tType[i] == Tt.function) {
-        // TODO: logic to calculate function immediately
-        if((i+2) < tType.length && tType[i+2] == Tt.wrapper)
-          output.add( func1arg(t[i] , t[i+1]) );
-          // output.add( func1arg(t[i] , eval(t[i+1])) );
-        else if((i+3) < tType.length && tType[i+3] == Tt.wrapper) {
-          output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
-          // output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+3])) );
         }
       } else if(tType[i] == Tt.op) {
         if(stack.isEmpty || isWrapper(stack.last.toString())) {
@@ -123,32 +167,31 @@ class Calculator {
             do {
               output.add(stack.last.toString()); // get top value
               stack.remove(stack.last); // remove top
-            } while(!stack.isEmpty);
+            } while(!stack.isEmpty || !isOpenWrapper(stack.last.toString()));
             stack.add(Token(t[i]));
           }
         }
       }
     }
-    // stack.add(Token(t[i]));
+
     while(!stack.isEmpty) {
       output.add(stack.last.toString()); // get top value
       stack.remove(stack.last); // remove top
     }
-    arithmetic(output);
-    return output.toString();
+
+    return arithmetic(output);
   }
 
   String arithmetic(List<String> t) {
     var stack = LinkedList<Token>();
     var top;
     var next;
-
-    print(t);
-    for(var i = 0; i < t.length; i++, print(stack)) {
+    print('postfix');
+    print('    $t');
+    for(var i = 0; i < t.length; i++) {
       if(isNumber(t[i])) {
         stack.add(Token(t[i]));
       } else {
-        print('hello');
         top = stack.last.toString();
         stack.remove(stack.last);
         next = stack.last.toString();
@@ -193,6 +236,12 @@ class Calculator {
     c == '[' ||
     c == '{';
 
+  bool containsOpenWrapper(String c) =>
+    c.contains('(') ||
+    c.contains('[') ||
+    c.contains('{');
+
+
   bool isCloseWrapper(String c) =>
     c == ')' ||
     c == ']' ||
@@ -216,8 +265,13 @@ class Calculator {
       b = 2;
     else if(c2 == '*' || c2 == '/')
       b = 1;
-    else // (c2 == '+' || c2 == '-')
+    else if(c2 == '+' || c2 == '-')
       b = 0;
+    else if(isOpenWrapper(c2))
+      b = -1;
+    
+    if(b == -1)
+      print('a: $a , b: $b');
 
     if(a == b)
       return 0;
@@ -228,18 +282,53 @@ class Calculator {
   }
 
   String func1arg(String func, String arg) {
-    print('$func -> $arg');
+    var answer;
+    var sign;
+    var val1 = double.parse(arg);
+    print('$func -> $val1');
+
+    if(func[0] == '-' || func[0] == '+') {
+      sign = '-';
+      func = func.substring(1,func.length);
+    }
+    
+    if(func == 'sqrt(')
+      answer = sqrt( val1 );
+
+    return sign != null ? '-${answer.toString()}' : answer.toString();
   }
 
   String func2arg(String func, String arg1, String arg2) {
-    print('$func -> $arg1 , $arg2');
+    var answer;
+    var sign;
+    var val1 = double.parse(arg1);
+    var val2 = double.parse(arg2);
+    print('$func -> $val1 , $val2');
+
+    if(func[0] == '-' || func[0] == '+') {
+      sign = '-';
+      func = func.substring(1,func.length);
+    }
+
+    if(func == 'root(') {
+      if(val2 == val2.round()) {
+        answer = pow( val1, 1.0/val2 ).round();
+        print('int root');
+      } else {
+        answer = pow( val1, 1.0/val2 );
+        print('double root');
+      }
+    } else if(func == 'pow(')
+      answer = pow( val1, val2 );
+
+    return sign != null ? '-${answer.toString()}' : answer.toString();
   }
 
   String getVal(String next, String op, String top) {
     double n = double.parse(next);
     double t = double.parse(top);
     print(next + ' $op ' + top);
-    
+
     if(op == '*')
       return (n*t).toString();
     else if(op == '/')

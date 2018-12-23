@@ -101,6 +101,7 @@ class _InputState extends State<Input> {
         showBottomSheet();
       },
       onChanged: (input) => setState(() { // TODO: parse and calculate for output
+        output.text = '';
         output.text = calcy.calculate(input);
       }),
     )
