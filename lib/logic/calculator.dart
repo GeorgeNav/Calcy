@@ -17,7 +17,7 @@ class Calculator {
     var func = false;
 
     for(var i = 0; i < input.length; i++) {
-      if(isnumber(input[i]) || input[i] == '.') {
+      if(isNumber(input[i]) || input[i] == '.') {
         if(number) {
           if(  input[i] != '.' ||
               (input[i] == '.' && !t[t.length-1].contains('.'))
@@ -134,21 +134,44 @@ class Calculator {
       output.add(stack.last.toString()); // get top value
       stack.remove(stack.last); // remove top
     }
-
+    arithmetic(output);
     return output.toString();
   }
 
-  bool isnumber(String c) =>
-    c == "0" ||
-    c == "1" ||
-    c == "2" ||
-    c == "3" ||
-    c == "4" ||
-    c == "5" ||
-    c == "6" ||
-    c == "7" ||
-    c == "8" ||
-    c == "9";
+  String arithmetic(List<String> t) {
+    var stack = LinkedList<Token>();
+    var top;
+    var next;
+
+    print(t);
+    for(var i = 0; i < t.length; i++, print(stack)) {
+      if(isNumber(t[i])) {
+        stack.add(Token(t[i]));
+      } else {
+        print('hello');
+        top = stack.last.toString();
+        stack.remove(stack.last);
+        next = stack.last.toString();
+        stack.remove(stack.last);
+        stack.add( Token(getVal(next, t[i], top)) );
+      }
+    }
+
+    return stack.last.toString();
+  }
+
+  bool isNumber(String c) =>
+    c.contains('.') ||
+    c.contains('0') ||
+    c.contains('1') ||
+    c.contains('2') ||
+    c.contains('3') ||
+    c.contains('4') ||
+    c.contains('5') ||
+    c.contains('6') ||
+    c.contains('7') ||
+    c.contains('8') ||
+    c.contains('9');
 
   bool isOp(String c) =>
     c == '+' ||
@@ -210,6 +233,21 @@ class Calculator {
 
   String func2arg(String func, String arg1, String arg2) {
     print('$func -> $arg1 , $arg2');
+  }
+
+  String getVal(String next, String op, String top) {
+    double n = double.parse(next);
+    double t = double.parse(top);
+    print(next + ' $op ' + top);
+    
+    if(op == '*')
+      return (n*t).toString();
+    else if(op == '/')
+      return (n/t).toString();
+    else if(op == '+')
+      return (n+t).toString();
+    else if(op == '-')
+      return (n-t).toString();
   }
 }
 

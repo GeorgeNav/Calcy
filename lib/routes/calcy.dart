@@ -36,10 +36,24 @@ class Calcy extends StatelessWidget {
         onTap: () => SystemChannels.textInput.invokeMethod('TextInput.hide'),
         child: Row(
             mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Input(),
               Output(),
+              MaterialButton(
+                color: Colors.blue,
+                minWidth: 50,
+                child: Text(
+                  'Copy',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8
+                  ),
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: output.text));
+                },
+              ),
             ],
         ),
       )
@@ -76,7 +90,7 @@ class _InputState extends State<Input> {
   Widget build(BuildContext context) => 
   Container(
     color: Color.fromARGB(255, 33, 34, 38),
-    width: MediaQuery.of(context).size.width * 0.60,
+    width: MediaQuery.of(context).size.width * 0.50,
     child: TextField(
       controller: input,
       decoration: InputDecoration(
@@ -101,7 +115,7 @@ class Output extends StatefulWidget {
 class _OutputState extends State<Output> {
   Widget build(BuildContext context) => Container(
     color: Color.fromARGB(255, 33, 34, 38),
-    width: MediaQuery.of(context).size.width * 0.40,
+    width: 100,
     child: TextField(
       focusNode: FocusNode(),
       controller: output,
