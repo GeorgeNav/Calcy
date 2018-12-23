@@ -3,7 +3,7 @@ import 'dart:core';
 import 'dart:collection';
 
 enum Tt { // token type
-  number,op,wrapper,alpha,function
+  alpha,argument,number,op,function,wrapper
 }
 
 class Calculator {
@@ -14,6 +14,7 @@ class Calculator {
     var tType = <Tt>[];
     var number = false; // seen a number before?
     var alpha = false;
+    var func = false;
 
     for(var i = 0; i < input.length; i++) {
       if(isnumber(input[i]) || input[i] == '.') {
@@ -24,21 +25,29 @@ class Calculator {
             t[t.length-1] += input[i];
           else
             return 'ERROR: too many decimals for this token';
+          number = true;
+          func = false;
         } else {
           t.add(input[i]);
-          tType.add(Tt.number);
+          if(func)
+            tType.add(Tt.argument);
+          else
+            tType.add(Tt.number);
+          number = true;
+          func = false;
+          alpha = false;
         }
-        number = true;
-        alpha = false;
       } else if(isOp(input[i])) {
         t.add(input[i]);
         tType.add(Tt.op);
         number = false;
         alpha = false;
+        func = false;
       } else if(isWrapper(input[i])) {
         if(alpha && isOpenWrapper(input[i])) {
           t[t.length-1] += input[i];
           tType.length == 0 ? tType.add(Tt.function) : tType[tType.length-1] = Tt.function;
+          func = true;
         } else {
           t.add(input[i]);
           tType.add(Tt.wrapper);
@@ -54,12 +63,13 @@ class Calculator {
         }
         number = false;
         alpha = true;
-      } else if(input[i] == ' ' && alpha) {
-        t[t.length-1] += ' ';
+        func = false;
+      } else {
+        number = false;
+        alpha = false;
+        func = true;
       }
     }
-    print(t);
-    print(tType);
 
     return infixToPostfix(t, tType);
   }
@@ -68,24 +78,31 @@ class Calculator {
     var stack = LinkedList<Token>();
     var output = <String>[];
 
-    for(var i = 0; i < tType.length; i++, print(stack)) {
+    for(var i = 0; i < tType.length; i++) {
       if(tType[i] == Tt.number) {
         output.add(t[i]);
       } else if(tType[i] == Tt.wrapper) {
         if(isOpenWrapper(t[i])) {
           stack.add(Token(t[i]));
         } else { // is closed wrapper
-          do {
+          while(!isOpenWrapper(stack.last.toString())) {
+            print(stack);
             output.add(stack.last.toString()); // get top value
             stack.remove(stack.last); // remove top
             if(stack.isEmpty)
-              return 'ERROR: no closing wrapper';
-          } while (!isCloseWrapper(stack.last.toString()));
+              return 'ERROR: no opening wrapper found';
+          }
           stack.remove(stack.last); // discard wrapper from top
         }
       } else if(tType[i] == Tt.function) {
         // TODO: logic to calculate function immediately
-
+        if((i+2) < tType.length && tType[i+2] == Tt.wrapper)
+          output.add( func1arg(t[i] , t[i+1]) );
+          // output.add( func1arg(t[i] , eval(t[i+1])) );
+        else if((i+3) < tType.length && tType[i+3] == Tt.wrapper) {
+          output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
+          // output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+3])) );
+        }
       } else if(tType[i] == Tt.op) {
         if(stack.isEmpty || isWrapper(stack.last.toString())) {
           stack.add(Token(t[i]));
@@ -179,16 +196,20 @@ class Calculator {
     else // (c2 == '+' || c2 == '-')
       b = 0;
 
-    if(a == b) {
-      print('$c1 is    =    to $c2');
+    if(a == b)
       return 0;
-    } else if(a > b) {
-      print('$c1 is    >    to $c2');
+    else if(a > b)
       return 1;
-    } else { // (a < b)
-      print('$c1 is    <    to $c2');
+    else // (a < b)
       return 2;
-    }
+  }
+
+  String func1arg(String func, String arg) {
+    print('$func -> $arg');
+  }
+
+  String func2arg(String func, String arg1, String arg2) {
+    print('$func -> $arg1 , $arg2');
   }
 }
 
