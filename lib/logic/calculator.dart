@@ -127,13 +127,13 @@ class Calculator {
       }  else if(tType[i] == Tt.function) {
         // TODO: logic to calculate function immediately
         if((i+2) < tType.length && tType[i+2] == Tt.wrapper) {
-          output.add( func1arg(t[i] , t[i+1]) );
+          // output.add( func1arg(t[i] , t[i+1]) );
+          output.add( func1arg(t[i] , eval(t[i+1])) );
           i = i + 2;
-          // output.add( func1arg(t[i] , eval(t[i+1])) );
         } else if((i+3) < tType.length && tType[i+3] == Tt.wrapper) {
-          output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
+          // output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
+          output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+2])) );
           i = i + 3;
-          // output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+3])) );
         }
       } else if(tType[i] == Tt.wrapper) {
         if(isOpenWrapper(t[i])) {
@@ -311,13 +311,10 @@ class Calculator {
     }
 
     if(func == 'root(') {
-      if(val2 == val2.round()) {
+      if(val2 == val2.round()) // int root number
         answer = pow( val1, 1.0/val2 ).round();
-        print('int root');
-      } else {
+      else // double root number
         answer = pow( val1, 1.0/val2 );
-        print('double root');
-      }
     } else if(func == 'pow(')
       answer = pow( val1, val2 );
 
