@@ -45,13 +45,13 @@ class Calculator {
         } else
           return 'ERROR: too many operators';
       } else if(isWrapper(input[i])) {
-        if(isOpenWrapper(input[i])) {
+        print(neg);
+        if(isOpenWrapper(input[i]) && !neg) {
           if(t.length != 0 && !(t.last is double) && onlyAlpha(t.last) && valForWord(t.last).toString() == 'NaN') { // this is the start of a function's arg(s)
             t.last += input[i];
             var iComma = -1;
             var iWrapper = -1;
             var j = i+1;
-            print('    do');
             do { // find closing function wrapper (add comma if there exists one)
               if(input[j] == ',')
                 iComma = j;
@@ -110,10 +110,45 @@ class Calculator {
             op = true;
             neg = false;
           }
+        } else if(isOpenWrapper(input[i]) && neg) {
+          print('-ANSWER');
+          var iWrapper = -1;
+          var j = i+1;
+          do { // find closing function wrapper (add comma if there exists one)
+            if(isOpenWrapper(input[j]))
+              iWrapper--;
+            else if(isCloseWrapper(input[j]))
+              iWrapper++;
+            if(iWrapper == 0) {
+              iWrapper = j; // now iWrapper is an function's close wrapper index rather than counting wrapper pairs
+              break;
+            }
+            j++;
+          } while(j < input.length);
+          String answer;
+          if(iWrapper+1 <= input.length)
+            answer = '-${calculate(input.substring(i, iWrapper+1))}';
+          else
+            answer = 'NaN';
+          t.add(double.parse(answer));
+          i = iWrapper;
+          if(i+1 < input.length && (isNumber(input[i+1]) || onlyAlpha(input[i+1]))) {
+            t.add('*');
+            op = true;
+            neg = false;
+          } else {
+            op = false;
+            neg = false;
+          }
         } else { // closed wrapper
           t.add(input[i]);
-          op = false;
-          neg = false;
+          if(i+1 < input.length && (isNumber(input[i+1]) || onlyAlpha(input[i+1]))) {
+            t.add('*');
+            op = true;
+          } else {
+            op = false;
+            neg = false;
+          }
         }
       } else if(onlyAlpha(input[i])) {
          if(t.length == 0 || op || t.length != 0 && isOpenWrapper(t.last)) { // might be a predetermined word value or function character
