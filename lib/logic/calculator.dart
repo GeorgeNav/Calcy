@@ -46,7 +46,6 @@ class Calculator {
           return 'ERROR: too many operators';
       } else if(isWrapper(input[i])) {
         if(isOpenWrapper(input[i])) {
-          print('input[$i]: ${input[i]}, t.last: ${t.last}, is double? ${t.last is double}');
           if(t.length != 0 && !(t.last is double) && onlyAlpha(t.last) && valForWord(t.last).toString() == 'NaN') { // this is the start of a function's arg(s)
             t.last += input[i];
             var iComma = -1;
@@ -105,6 +104,10 @@ class Calculator {
           } else
             t.add(input[i]);
           op = false;
+          neg = false;
+        } else if(t.length == 0 && isOpenWrapper(input[i])) {
+          t.add(input[i]);
+          op = true;
           neg = false;
         } else { // closed wrapper
           t.add(input[i]);
