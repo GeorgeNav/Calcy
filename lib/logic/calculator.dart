@@ -42,7 +42,6 @@ class Calculator {
         } else
           return 'ERROR: too many operators';
       } else if(isWrapper(input[i])) {
-
         if(isOpenWrapper(input[i]) && !neg) {
           if(t.length != 0 &&
           !(t.last is double) &&
@@ -114,7 +113,6 @@ class Calculator {
           var iWrapper = -1;
           var j = i+1;
           while(j < input.length && iWrapper != 0) { // find closing function wrapper (add comma if there exists one)
-            print('h');
             if(isOpenWrapper(input[j]))
               iWrapper--;
             else if(isCloseWrapper(input[j]))
@@ -135,14 +133,11 @@ class Calculator {
             answer = '${calculate(input.substring(i, iWrapper+1))}';
           else
             answer = 'NaN';
-          print('        ANSWER: $answer');
           if(answer.length >= 3 && answer[0] == '-' && answer[1] == '-') // handles double neg
             answer = answer.substring(2,answer.length);
-
-          print('        ANSWER: $answer');
           t.add(double.parse(answer));
           i = iWrapper;
-          if(i+1 < input.length && (isNumber(input[i+1]) || onlyAlpha(input[i+1]))) {
+          if(i+1 < input.length && (isNumber(input[i+1]) || onlyAlpha(input[i+1]) || isCloseWrapper(input[i+1]))) {
             t.add('*');
             print('lazy! i\'ll add a * for ya');
             op = true;
