@@ -97,18 +97,19 @@ class Calculator {
             } else { // Not a valid argument entry
               return 'ERROR: no closing wrapper for function';
             }
+            op = false;
+            neg = false;
           } else if(t.length != 0 && (t.last is double || t.last is String && onlyAlpha(t.last))) { // forgive no multiplication sign
             t.add('*');
             t.add(input[i]);
             print('lazy! i\'ll add a * for ya');
-          } else
+            op = true;
+            neg = false;
+          } else {
             t.add(input[i]);
-          op = false;
-          neg = false;
-        } else if(t.length == 0 && isOpenWrapper(input[i])) {
-          t.add(input[i]);
-          op = true;
-          neg = false;
+            op = true;
+            neg = false;
+          }
         } else { // closed wrapper
           t.add(input[i]);
           op = false;
