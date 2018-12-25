@@ -39,9 +39,10 @@ class Calcy extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
+                iconSize: 24,
                 color: Colors.white,
                 icon: Icon(
-                  Icons.content_copy
+                  Icons.content_copy,
                 ),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: input.text));
@@ -50,9 +51,10 @@ class Calcy extends StatelessWidget {
               Input(),
               Output(),
               IconButton(
+                iconSize: 24,
                 color: Colors.lightGreen,
                 icon: Icon(
-                  Icons.content_copy
+                  Icons.content_copy,
                 ),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: output.text));
