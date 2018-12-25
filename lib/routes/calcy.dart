@@ -38,17 +38,21 @@ class Calcy extends StatelessWidget {
             mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              IconButton(
+                color: Colors.white,
+                icon: Icon(
+                  Icons.content_copy
+                ),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: input.text));
+                },
+              ),
               Input(),
               Output(),
-              MaterialButton(
-                color: Colors.blue,
-                minWidth: 50,
-                child: Text(
-                  'Copy',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8
-                  ),
+              IconButton(
+                color: Colors.lightGreen,
+                icon: Icon(
+                  Icons.content_copy
                 ),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: output.text));
@@ -70,7 +74,7 @@ class Calcy extends StatelessWidget {
             fontSize: 20.0,
             fontWeight: FontWeight.bold
           ),
-          ),
+        ),
         onPressed: () { // TODO: when button is pressed do something
           if(buttonText != '=')
             input.text += '$buttonText';
@@ -114,19 +118,17 @@ class Output extends StatefulWidget {
 }
 
 class _OutputState extends State<Output> {
-  Widget build(BuildContext context) => Container(
-    color: Color.fromARGB(255, 33, 34, 38),
-    width: 100,
-    child: TextField(
-      focusNode: FocusNode(),
-      controller: output,
-      enabled: true,
-      style: TextStyle(color: Colors.lightGreen),
-      onTap: () {
-        print('Copying to clipboard');
-        Clipboard.setData(ClipboardData(text: output.text));
-      },
-      /* textDirection: TextDirection.rtl, */
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      color: Color.fromARGB(255, 33, 34, 38),
+      width: 100,
+      child: TextField(
+        focusNode: FocusNode(),
+        controller: output,
+        enabled: false,
+        style: TextStyle(color: Colors.lightGreen),
+        textDirection: TextDirection.rtl,
+      )
     )
   );
 }
