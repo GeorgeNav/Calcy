@@ -2,140 +2,167 @@ import 'dart:math';
 import 'dart:core';
 import 'dart:collection';
 
-enum Tt { // token type
-  alpha,argument,number,op,function,wrapper
-}
-
 class Calculator {
-  String calculate(String input) => eval(input);
-    
+  String calculate(String input) {
+    var stack = LinkedList<Token>();
+
+    print('Converting input');
+    return eval(input);
+  }
   String eval(String input) {
-    var t = <String>[]; // tokens
-    var tType = <Tt>[];
-    var number = false; // seen a number before?R
-    var alpha = false;
-    var func = false;
     var op = true;
-    var sign = false;
-    for(var i = 0; i < input.length; i++) {
-      if(isNumber(input[i]) || input[i] == '.') {
-        if(number) {
-          if(  input[i] != '.' ||
-              (input[i] == '.' && !t[t.length-1].contains('.'))
-            )
-            t[t.length-1] += input[i];
-          else
-            return 'ERROR: too many decimals for this token';
-        } else {
-          if(func) {
-            if(tType.length != 0 && tType[tType.length-1] == Tt.argument) {
-              t[t.length-1] += input[i];
-            } else { // function is before
-              t.add(input[i]);
-              tType.add(Tt.argument);
-            }
-          } else if(sign && (t.length != 0 && (t[t.length-1] == '+' || t[t.length-1] == '-'))) {
-            t[t.length-1] += input[i];
-            tType[tType.length-1] = Tt.number;
-          } else {
-            t.add(input[i]);
-            tType.add(Tt.number);
-          }
-        }
-        number = true;
-        func = false;
-        alpha = false;
-        sign = false;
+    var neg = false;
+    var str = '';
+    List<dynamic> t = []; // can take in any value type
+
+    if(input == '')
+      return '';
+
+    print('> eval start');
+    for(var i = 0; i < input.length; i++, print('Infix List: $t')) {
+      if(isNumber(input[i])) { // check if character is a number
+        var j = i;
+        do { // convert numbers to a single double token
+          str += input[j];
+          j++;
+        } while(j < input.length && isNumber(input[j]));        
+        i = j - 1;
+        var number = double.parse(str); str = '';
+        neg ? t.add(-number) : t.add(number);
         op = false;
-        sign = false;
+        neg = false;
       } else if(isOp(input[i])) {
-        t.add(input[i]);
-        if(!func)
-          tType.add(Tt.op);
-        else if(tType.length != 0 && tType[tType.length-1] == Tt.argument)
-          t[t.length-1] += input[i];
-        number = false;
-        alpha = false;
-        func = false;
-        if(op) {
-          sign = true;
+        if(!op) { // check if previous character is an operator
+          t.add(input[i]); // add to tokens
+          op = true; // now the previous token is an operator
+          neg = false;
+        } else if(input[i] == '-' || input[i] == '+') {
           op = false;
-        } else {
-          op = true;
-          sign = false;
-        }
+          if(input[i] == '-')
+            neg = true; // now the previous token is a negative neg
+          else
+            neg = false;
+        } else
+          return 'ERROR: too many operators';
       } else if(isWrapper(input[i])) {
-        if(alpha && isOpenWrapper(input[i])) {
-          t[t.length-1] += input[i];
-          tType.length == 0 ? tType.add(Tt.function) : tType[tType.length-1] = Tt.function;
-          func = true;
-        } else {
+        if(isOpenWrapper(input[i])) {
+          print('input[$i]: ${input[i]}, t.last: ${t.last}, is double? ${t.last is double}');
+          if(t.length != 0 && !(t.last is double) && onlyAlpha(t.last) && valForWord(t.last).toString() == 'NaN') { // this is the start of a function's arg(s)
+            t.last += input[i];
+            var iComma = -1;
+            var iWrapper = -1;
+            var j = i+1;
+            print('    do');
+            do { // find closing function wrapper (add comma if there exists one)
+              if(input[j] == ',')
+                iComma = j;
+              if(isOpenWrapper(input[j]))
+                iWrapper--;
+              else if(isCloseWrapper(input[j]))
+                iWrapper++;
+              if(iWrapper == 0) {
+                iWrapper = j; // now iWrapper is an function's close wrapper index rather than counting wrapper pairs
+                break;
+              }
+              j++;
+            } while(j < input.length);
+            String funcAnswer = 'NaN';
+            // calculate what's inside the function's arguments
+            if(iComma != -1 && i != input.length-1) { // 2 arg function
+              print('...func2');
+              funcAnswer = func2arg(
+                t.last,
+                calculate(input.substring(i+1,iComma)),
+                iWrapper != -1 ?
+                  calculate(input.substring(iComma+1,iWrapper)) :
+                  calculate(input.substring(iComma+1,input.length)) // forgiving that there is not a closing wrapper for function
+              );
+              iWrapper != -1 ? i = iWrapper : i = input.length;
+              print('    funcAnswer: $funcAnswer');
+              neg ?
+                t.last = -double.parse(funcAnswer) :
+                t.last = double.parse(funcAnswer);
+            } else if(i != input.length-1) { // 1 arg function
+              print('...func1');
+              funcAnswer = func1arg(
+                t.last,
+                iWrapper != -1 ?
+                  calculate(input.substring(i+1,iWrapper)) :
+                  calculate(input.substring(i+1,input.length)) // forgiving that there is not a closing wrapper for function
+              );
+              iWrapper != -1 ? i = iWrapper : i = input.length;
+              print('    funcAnswer: $funcAnswer');
+              neg ?
+                t.last = -double.parse(funcAnswer) :
+                t.last = double.parse(funcAnswer); 
+            } else { // Not a valid argument entry
+              return 'ERROR: no closing wrapper for function';
+            }
+          } else if(t.length != 0 && (t.last is double || t.last is String && onlyAlpha(t.last))) { // forgive no multiplication sign
+            t.add('*');
+            t.add(input[i]);
+            print('lazy! i\'ll add a * for ya');
+          } else
+            t.add(input[i]);
+          op = false;
+          neg = false;
+        } else { // closed wrapper
           t.add(input[i]);
-          tType.add(Tt.wrapper);
+          op = false;
+          neg = false;
         }
-        number = false;
-        alpha = false;
-        op = false;
-        sign = false;
-      } else if(isAlpha(input[i])) {
-        if(alpha)
-          t[t.length-1] += input[i];
-        else if(sign && (t.length != 0 && (t[t.length-1] == '+' || t[t.length-1] == '-'))) {
-          t[t.length-1] += input[i];
-          tType[tType.length-1] = Tt.function;
-        } else {
-          t.add(input[i]);
-          tType.add(Tt.alpha);
-        }
-        number = false;
-        alpha = true;
-        func = false;
-        op = false;
-        sign = false;
+      } else if(onlyAlpha(input[i])) {
+         if(t.length == 0 || op || t.length != 0 && isOpenWrapper(t.last)) { // might be a predetermined word value or function character
+          if(neg) t.add('-${input[i]}');
+          else t.add(input[i]);
+        } else if(t.length != 0 && t.last is String)
+          t.last += input[i];
+        op = false; neg = false;
       } else if(input[i] == ' ') {
-        number = false;
-        alpha = false;
-        func = false;
-        op = true;
-        sign = false;
-      } else if(input[i] == ',') {
-        t.add('');
-        tType.add(Tt.argument);
-        number = false;
-        alpha = false;
-        func = true;
+        // TODO: do nothing?
+      } else {
+        t.last = getUnitVal(input[i], t.last);
         op = false;
-        sign = false;
+        neg = false;
       }
     }
-    print(t);
-    print(tType);
-
-    return infixToPostfix(t, tType);
+    print('> Infix Tokens: $t');
+    return t.length == 1 ? t[0].toString() : arithmetic(t);
   }
 
-  String infixToPostfix(List<String> t, List<Tt> tType) { // TODO: calculate result from tokens -> postfix -> result
+  String arithmetic(List<dynamic> t) {
+    List<dynamic> postfix = infixToPostfix(t);
     var stack = LinkedList<Token>();
-    var output = <String>[];
+    var top;
+    var next;
+    print('postfix: $postfix');
+    for(var i = 0; i < postfix.length; i++) {
+      if(postfix[i] is double) { // double value
+        stack.add(Token(postfix[i]));
+      } else { // operator
+        top = stack.last.toString();
+        stack.remove(stack.last);
+        next = stack.last.toString();
+        stack.remove(stack.last);
+        stack.add( Token(getVal(next, postfix[i], top)) );
+      }
+    }
 
-    print('infix');
-    print('    $t');
+    return stack.last.toString();
+  }
 
-    for(var i = 0; i < tType.length; i++) {
-      if(tType[i] == Tt.number) {
+  List<dynamic> infixToPostfix(List<dynamic> t) { // TODO: infix to postfix
+    var stack = LinkedList<Token>();
+    var output = [];
+
+    print(t);    
+    for(var i = 0; i < t.length; i++, print(' stack: $stack'),print('  output: $output')) {
+      print('    ${t[i]}');
+      if(t[i] is double) { // double value
         output.add(t[i]);
-      }  else if(tType[i] == Tt.function) {
-        // TODO: logic to calculate function immediately
-        if((i+2) < tType.length && tType[i+2] == Tt.wrapper) {
-          // output.add( func1arg(t[i] , t[i+1]) );
-          output.add( func1arg(t[i] , eval(t[i+1])) );
-          i = i + 2;
-        } else if((i+3) < tType.length && tType[i+3] == Tt.wrapper) {
-          // output.add( func2arg(t[i] , t[i+1] , t[i+2]) );
-          output.add( func2arg(t[i] , eval(t[i+1]) , eval(t[i+2])) );
-          i = i + 3;
-        }
-      } else if(tType[i] == Tt.wrapper) {
+      } else if(t[i] is String && onlyAlpha(t[i])) { // predetermined word value
+        output.add(valForWord(t[i]));
+      } else if(isWrapper(t[i])) { // wrapper
         if(isOpenWrapper(t[i])) {
           stack.add(Token(t[i]));
         } else { // is closed wrapper
@@ -143,67 +170,40 @@ class Calculator {
             output.add(stack.last.toString()); // get top value
             stack.remove(stack.last); // remove top
             if(stack.isEmpty)
-              return 'ERROR: no opening wrapper found';
+              return ['ERROR: no opening wrapper found'];
           }
           stack.remove(stack.last); // discard wrapper from top
         }
-      } else if(tType[i] == Tt.op) {
-        if(stack.isEmpty || isWrapper(stack.last.toString())) {
+      } else if(isOp(t[i])) { // *,/,+,-
+        if(stack.isEmpty || isOpenWrapper(stack.last.toString())) {
           stack.add(Token(t[i]));
         } else {
-          var p = precedence(t[i],stack.last.toString());
-          if(p == 0) {
+          print('    do');
+          var p = precedence(t[i], !stack.isEmpty ? stack.last.toString() : '');
+          if(p == 0 || p == 2) { // t[i] precedence = top of stack (no matter how much the stack is popped, it'll never be higher then the current)
             do {
               output.add(stack.last.toString()); // get top value
               stack.remove(stack.last); // remove top
-              if(!stack.isEmpty)
-                p = precedence(t[i],stack.last.toString()); 
-            } while(p == 0 && !stack.isEmpty);
+              p = precedence(t[i], !stack.isEmpty ? stack.last.toString() : '');
+            } while(p != 1);
             stack.add(Token(t[i]));
           }
-          else if(p == 1)
+          else if(p == 1) // t[i] precedence > top of stack
             stack.add(Token(t[i]));
-          else if(p == 2) {
-            do {
-              output.add(stack.last.toString()); // get top value
-              stack.remove(stack.last); // remove top
-            } while(!stack.isEmpty || !isOpenWrapper(stack.last.toString()));
-            stack.add(Token(t[i]));
-          }
         }
-      }
+      }  
     }
 
     while(!stack.isEmpty) {
+      // popping top value
       output.add(stack.last.toString()); // get top value
       stack.remove(stack.last); // remove top
     }
 
-    return arithmetic(output);
+    return output;
   }
 
-  String arithmetic(List<String> t) {
-    var stack = LinkedList<Token>();
-    var top;
-    var next;
-    print('postfix');
-    print('    $t');
-    for(var i = 0; i < t.length; i++) {
-      if(isNumber(t[i])) {
-        stack.add(Token(t[i]));
-      } else {
-        top = stack.last.toString();
-        stack.remove(stack.last);
-        next = stack.last.toString();
-        stack.remove(stack.last);
-        stack.add( Token(getVal(next, t[i], top)) );
-      }
-    }
-
-    return stack.last.toString();
-  }
-
-  bool isNumber(String c) =>
+  bool isNumber(c) =>
     c.contains('.') ||
     c.contains('0') ||
     c.contains('1') ||
@@ -216,14 +216,14 @@ class Calculator {
     c.contains('8') ||
     c.contains('9');
 
-  bool isOp(String c) =>
+  bool isOp(c) =>
     c == '+' ||
     c == '-' ||
     c == '/' ||
     c == '*' ||
     c == '^';
 
-  bool isWrapper(String c) =>
+  bool isWrapper(c) =>
     c == ')' ||
     c == '(' ||
     c == '[' ||
@@ -231,28 +231,31 @@ class Calculator {
     c == '{' ||
     c == '}';
 
-  bool isOpenWrapper(String c) =>
+  bool isOpenWrapper(c) =>
     c == '(' ||
     c == '[' ||
     c == '{';
 
-  bool containsOpenWrapper(String c) =>
+  bool containsOpenWrapper(c) =>
     c.contains('(') ||
     c.contains('[') ||
     c.contains('{');
 
 
-  bool isCloseWrapper(String c) =>
+  bool isCloseWrapper(c) =>
     c == ')' ||
     c == ']' ||
     c == '}';
 
-  bool isAlpha(String c) =>
-    c == 'a' || c == 'b' || c == 'c' || c == 'd' || c == 'e' || c == 'f' || c == 'g' || c == 'h' || c == 'i' || c == 'j' || c == 'k' || c == 'l' || c == 'm' || c == 'n' || c == 'o' || c == 'p' || c == 'q' || c == 'r' || c == 's' || c == 't' || c == 'u' || c == 'v' || c == 'w' || c == 'x' || c == 'y' || c == 'z' ||
-    c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F' || c == 'G' || c == 'H' || c == 'I' || c == 'J' || c == 'K' || c == 'L' || c == 'M' || c == 'N' || c == 'O' || c == 'P' || c == 'Q' || c == 'R' || c == 'S' || c == 'T' || c == 'U' || c == 'V' || c == 'W' || c == 'X' || c == 'Y' || c == 'Z';
+  bool onlyAlpha(c) =>
+      RegExp(r'^[a-zA-Z]+$').hasMatch(c);
 
-  int precedence(String c1, String c2) {
-    var a, b;
+  int precedence(c1, c2) {
+    var a;
+    var b;
+
+    if(c2 == '') // top of stack is a open wrapper
+      return 1;
 
     if(c1 == '^')
       a = 2;
@@ -283,45 +286,54 @@ class Calculator {
 
   String func1arg(String func, String arg) {
     var answer;
-    var sign;
-    var val1 = double.parse(arg);
-    print('$func -> $val1');
+    var neg;
 
-    if(func[0] == '-' || func[0] == '+') {
-      sign = '-';
-      func = func.substring(1,func.length);
+    print('$func -> $arg');
+    if(isOpenWrapper(func[func.length-1]) && arg != '') {
+      var val1 = double.parse(arg);
+
+      if(func[0] == '-') {
+        neg = '-';
+        func = func.substring(1,func.length);
+      }
+      
+      if(func == 'sqrt(')
+        answer = sqrt( val1 );
+
+      return answer == null ? 'NaN' :
+        neg != null ? '-${answer.toString()}' : answer.toString();
     }
-    
-    if(func == 'sqrt(')
-      answer = sqrt( val1 );
-
-    return sign != null ? '-${answer.toString()}' : answer.toString();
+    return 'NaN'; // Cannot calculate
   }
 
   String func2arg(String func, String arg1, String arg2) {
     var answer;
-    var sign;
-    var val1 = double.parse(arg1);
-    var val2 = double.parse(arg2);
-    print('$func -> $val1 , $val2');
+    var neg;
+    var val1;
+    var val2;
 
-    if(func[0] == '-' || func[0] == '+') {
-      sign = '-';
-      func = func.substring(1,func.length);
-    }
+    print('$func -> $arg1 , $arg2');
+    if(isOpenWrapper(func[func.length-1]) && arg1 != '' && arg2 != '') {
+      val1 = double.parse(arg1);
+      val2 = double.parse(arg2);
 
-    if(func == 'root(') {
-      if(val2 == val2.round()) // int root number
-        answer = pow( val1, 1.0/val2 ).round();
-      else // double root number
+      if(func[0] == '-') {
+        neg = '-';
+        func = func.substring(1,func.length);
+      }
+
+      if(func == 'root(') {
         answer = pow( val1, 1.0/val2 );
-    } else if(func == 'pow(')
-      answer = pow( val1, val2 );
-
-    return sign != null ? '-${answer.toString()}' : answer.toString();
+      } else if(func == 'pow(')
+        answer = pow( val1, val2 );
+      
+      return answer == null ? 'NaN' :
+        neg != null ? '-${answer.toString()}' : answer.toString();
+    }
+    return 'NaN'; // Cannot calculate
   }
 
-  String getVal(String next, String op, String top) {
+  String getVal(next, op, top) {
     double n = double.parse(next);
     double t = double.parse(top);
     print(next + ' $op ' + top);
@@ -334,6 +346,27 @@ class Calculator {
       return (n+t).toString();
     else if(op == '-')
       return (n-t).toString();
+    return 'ERROR: invalid operator';
+  }
+
+  double valForWord(word) {
+    var val;
+    if(word is double)
+      return double.parse('NaN');
+
+    // TODO: think of words that have values to put here
+    if(word == 'pi' || word == 'pie')
+      val = 3.1415926535897932;
+
+    return val != null ? val : double.parse('NaN');
+  }
+
+  double getUnitVal(String unit, double value) {
+    print('GET UNIT VAL: $unit , $value');
+    if(unit == '%')
+      return value/100.0;
+    
+    return double.parse('NaN');
   }
 }
 
