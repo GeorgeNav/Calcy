@@ -127,7 +127,7 @@ class _OutputState extends State<Output> {
         controller: output,
         enabled: false,
         style: TextStyle(color: Colors.lightGreen),
-        textDirection: TextDirection.rtl,
+        textDirection: TextDirection.ltr,
       )
     )
   );

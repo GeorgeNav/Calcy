@@ -3,23 +3,20 @@ import 'dart:core';
 import 'dart:collection';
 
 class Calculator {
-  String calculate(String input) {
-    var stack = LinkedList<Token>();
+  String calculate(String input) => eval(input);
 
-    print('Converting input');
-    return eval(input);
-  }
   String eval(String input) {
     var op = true;
     var neg = false;
     var str = '';
     List<dynamic> t = []; // can take in any value type
 
+    print('              CALCULATING');
+
     if(input == '')
       return '';
 
-    print('> eval start');
-    for(var i = 0; i < input.length; i++, print('Infix List: $t')) {
+    for(var i = 0; i < input.length; i++) {
       if(isNumber(input[i])) { // check if character is a number
         var j = i;
         do { // convert numbers to a single double token
@@ -45,9 +42,12 @@ class Calculator {
         } else
           return 'ERROR: too many operators';
       } else if(isWrapper(input[i])) {
-        print(neg);
+
         if(isOpenWrapper(input[i]) && !neg) {
-          if(t.length != 0 && !(t.last is double) && onlyAlpha(t.last) && valForWord(t.last).toString() == 'NaN') { // this is the start of a function's arg(s)
+          if(t.length != 0 &&
+          !(t.last is double) &&
+          onlyAlpha(t.last[t.last.length-1]) &&
+          valForWord(t.last).toString() == 'NaN') { // this is the start of a function's arg(s)
             t.last += input[i];
             var iComma = -1;
             var iWrapper = -1;
@@ -110,30 +110,41 @@ class Calculator {
             op = true;
             neg = false;
           }
-        } else if(isOpenWrapper(input[i]) && neg) {
-          print('-ANSWER');
+        } else if(isOpenWrapper(input[i])) {
           var iWrapper = -1;
           var j = i+1;
-          do { // find closing function wrapper (add comma if there exists one)
+          while(j < input.length && iWrapper != 0) { // find closing function wrapper (add comma if there exists one)
+            print('h');
             if(isOpenWrapper(input[j]))
               iWrapper--;
             else if(isCloseWrapper(input[j]))
               iWrapper++;
-            if(iWrapper == 0) {
-              iWrapper = j; // now iWrapper is an function's close wrapper index rather than counting wrapper pairs
-              break;
-            }
             j++;
-          } while(j < input.length);
+          }
+          if(iWrapper == 0) {
+            iWrapper = j-1; // now iWrapper is an function's close wrapper index rather than counting wrapper pairs
+          } else {
+            iWrapper = input.length-1;
+            i = i+1;
+          }
+          print('         WRAPPERRRRR: $iWrapper , i: $i');
           String answer;
-          if(iWrapper+1 <= input.length)
+          if(iWrapper+1 <= input.length && neg)
             answer = '-${calculate(input.substring(i, iWrapper+1))}';
+          else if(iWrapper+1 <= input.length && !neg)
+            answer = '${calculate(input.substring(i, iWrapper+1))}';
           else
             answer = 'NaN';
+          print('        ANSWER: $answer');
+          if(answer.length >= 3 && answer[0] == '-' && answer[1] == '-') // handles double neg
+            answer = answer.substring(2,answer.length);
+
+          print('        ANSWER: $answer');
           t.add(double.parse(answer));
           i = iWrapper;
           if(i+1 < input.length && (isNumber(input[i+1]) || onlyAlpha(input[i+1]))) {
             t.add('*');
+            print('lazy! i\'ll add a * for ya');
             op = true;
             neg = false;
           } else {
@@ -165,6 +176,7 @@ class Calculator {
         neg = false;
       }
     }
+
     print('> Infix Tokens: $t');
     return t.length == 1 ? t[0].toString() : arithmetic(t);
   }
@@ -194,9 +206,7 @@ class Calculator {
     var stack = LinkedList<Token>();
     var output = [];
 
-    print(t);    
-    for(var i = 0; i < t.length; i++, print(' stack: $stack'),print('  output: $output')) {
-      print('    ${t[i]}');
+    for(var i = 0; i < t.length; i++) {
       if(t[i] is double) { // double value
         output.add(t[i]);
       } else if(t[i] is String && onlyAlpha(t[i])) { // predetermined word value
@@ -217,7 +227,6 @@ class Calculator {
         if(stack.isEmpty || isOpenWrapper(stack.last.toString())) {
           stack.add(Token(t[i]));
         } else {
-          print('    do');
           var p = precedence(t[i], !stack.isEmpty ? stack.last.toString() : '');
           if(p == 0 || p == 2) { // t[i] precedence = top of stack (no matter how much the stack is popped, it'll never be higher then the current)
             do {
@@ -372,20 +381,20 @@ class Calculator {
     return 'NaN'; // Cannot calculate
   }
 
-  String getVal(next, op, top) {
+  double getVal(next, op, top) {
     double n = double.parse(next);
     double t = double.parse(top);
     print(next + ' $op ' + top);
 
     if(op == '*')
-      return (n*t).toString();
+      return (n*t);
     else if(op == '/')
-      return (n/t).toString();
+      return (n/t);
     else if(op == '+')
-      return (n+t).toString();
+      return (n+t);
     else if(op == '-')
-      return (n-t).toString();
-    return 'ERROR: invalid operator';
+      return (n-t);
+    return double.parse('NaN');
   }
 
   double valForWord(word) {
@@ -402,9 +411,16 @@ class Calculator {
 
   double getUnitVal(String unit, double value) {
     print('GET UNIT VAL: $unit , $value');
+
     if(unit == '%')
       return value/100.0;
-    
+    else if(unit == '!') {
+      var fac = value;
+      for(var i = value-1; i >= 1; i--)
+        fac *= i;
+      return fac;
+    }
+
     return double.parse('NaN');
   }
 }
