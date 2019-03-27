@@ -3,6 +3,10 @@ import 'dart:core';
 import 'dart:collection';
 
 class Calculator {
+  var words;
+  var funcs1arg;
+  var funcs2args;
+
   String calculate(String input) => eval(input);
 
   String eval(String input) {
